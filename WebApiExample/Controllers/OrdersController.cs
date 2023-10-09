@@ -21,6 +21,21 @@ namespace WebApiExample.Controllers
             _context = context;
         }
 
+        //GET: only read status with ok
+        [HttpGet("ok")]
+        public async Task<ActionResult<IEnumerable<Order>>> GetOrdersWithStatusOk()
+        {
+            if(_context.Orders == null)
+            {
+                return NotFound();
+            }
+            return await _context.Orders.Where(x => x.Status == "OK").Include(x => x.Customer).ToListAsync();
+            
+        }
+
+
+
+
         // GET: api/Orders
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Order>>> GetOrders()
@@ -40,7 +55,10 @@ namespace WebApiExample.Controllers
           {
               return NotFound();
           }
-            var order = await _context.Orders.Include(x => x.Customer).
+          //To make 
+            var order = await _context.Orders.Include(x => x.Customer)
+                                                .Include(x => x.OrderLines)!
+                                                .ThenInclude(x => x.Item).
                                                 SingleOrDefaultAsync(x => x.Id == id);
 
             if (order == null)
@@ -81,6 +99,36 @@ namespace WebApiExample.Controllers
 
             return NoContent();
         }
+
+        //PUT: set status ok
+        [HttpPut("ok/{id}")]
+        public async Task<IActionResult> SetOrderStatusToOk(int id, Order order)
+        {
+            order.Status = "OK";
+            return await PutOrder(id, order);
+
+        }
+
+        //PUT: backorder
+        [HttpPut("backorder/{id}")]
+        public async Task<IActionResult> SetOrderStatusToBackOrder(int id, Order order)
+        {
+
+            order.Status = "BACK ORDER";
+            return await PutOrder(id, order);
+
+        }
+
+
+        //PUT: Closed
+        [HttpPut("closed/{id}")]
+        public async Task<IActionResult> SetOrderStatusToClosed(int id, Order order)
+        {
+            order.Status = "BACK ORDER";
+            return await PutOrder(id, order);
+
+        }
+
 
         // POST: api/Orders
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
