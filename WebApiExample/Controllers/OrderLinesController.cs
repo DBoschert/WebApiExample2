@@ -21,6 +21,22 @@ namespace WebApiExample.Controllers
             _context = context;
         }
 
+        private async Task RecalculateOrderTotal(int id)
+        {
+            var total = (from ol in _context.OrderLines
+                         join i in _context.Items
+                             on ol.ItemId equals i.Id
+                         where ol.OrderId == id
+                         select new
+                         {
+                             LineTotal = ol.Quantity * i.Price
+                         }).Sum(x => x.LineTotal);
+            var order = await _context.Orders.FindAsync(id);
+            order!.Total = total;
+            await _context.SaveChangesAsync();
+
+        }
+
         // GET: api/OrderLines
         [HttpGet]
         public async Task<ActionResult<IEnumerable<OrderLine>>> GetOrderLines()
@@ -65,6 +81,7 @@ namespace WebApiExample.Controllers
             try
             {
                 await _context.SaveChangesAsync();
+                await RecalculateOrderTotal(orderLine.OrderId); //call only after SaveChanges
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -92,6 +109,7 @@ namespace WebApiExample.Controllers
           }
             _context.OrderLines.Add(orderLine);
             await _context.SaveChangesAsync();
+            await RecalculateOrderTotal(orderLine.OrderId); //call only after SaveChanges
 
             return CreatedAtAction("GetOrderLine", new { id = orderLine.Id }, orderLine);
         }
@@ -109,9 +127,10 @@ namespace WebApiExample.Controllers
             {
                 return NotFound();
             }
-
+            var orderId = orderLine.OrderId;
             _context.OrderLines.Remove(orderLine);
             await _context.SaveChangesAsync();
+            await RecalculateOrderTotal(orderId); //call only after SaveChanges
 
             return NoContent();
         }
